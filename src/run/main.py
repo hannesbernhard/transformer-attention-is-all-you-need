@@ -38,7 +38,12 @@ class TrainerConfig:
         self.fetch_data_online = kwargs.get("fetch_data_online", False)
 
         self.val_interval = kwargs.get("val_interval", 1)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "mps:0")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
         print(f"Using device: {self.device}")
 
 
@@ -138,7 +143,6 @@ class TransformerTrainer:
 
             self.scheduler.step()  
             self.optimizer.step()   
-            self.optimizer.zero_grad()
 
             # Update metrics
             total_loss += loss.item()
