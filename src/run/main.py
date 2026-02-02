@@ -22,6 +22,8 @@ import argparse
 
 from src.utils.lr_scheduler import TransformerLRScheduler
 
+
+
 project_root = Path(__file__).parent.parent.absolute()
 DATASET_PATH = os.path.join(project_root, "hf_cache", "root", ".cache", "huggingface", "datasets", "wmt17", "de-en", "0.0.0", "54d3aacfb5429020b9b85b170a677e4bc92f2449")
 
@@ -56,11 +58,14 @@ class TransformerTrainer:
         val_dataset,
         config: TrainerConfig,
         model_config: dict,
+        checkpoint_dir: Path,
     ):
         self.model = model.to(config.device)
         self.tokenizer = tokenizer
         self.config = config
         self.model_config = model_config
+
+        self.checkpoint_dir = checkpoint_dir
 
         pin = self.config.device.type == "cuda"
 
@@ -104,6 +109,18 @@ class TransformerTrainer:
         wandb.define_metric("Learning Rate", step_metric="epoch")
         wandb.define_metric("BLEU", step_metric="epoch")
 
+    def load_checkpoint(self, path):
+        checkpoint = torch.load(path, map_location=self.config.device)
+
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+
+        start_epoch = checkpoint.get("epoch", 0) + 1
+        print(f"Resuming training from epoch {start_epoch}")
+        return start_epoch
+
+
     def train_epoch(self, epoch):
         """Run one epoch of training."""
         self.model.train()
@@ -146,6 +163,12 @@ class TransformerTrainer:
 
             # Update metrics
             total_loss += loss.item()
+
+        self.save_checkpoint(
+            self.checkpoint_dir / "latest.pth",
+            epoch
+        )
+
 
         avg_loss = total_loss / len(self.train_loader)
         return avg_loss
@@ -231,11 +254,11 @@ class TransformerTrainer:
         wandb.log({"Validation": avg_loss, "epoch": epoch + 1})
         return avg_loss
 
-    def train(self):
+    def train(self, start_epoch=0):
         """Main training loop."""
         best_val_loss = float("inf")
 
-        for epoch in range(self.config.num_epochs):
+        for epoch in range(start_epoch, self.config.num_epochs):
             # log current learning rate
             self.logger.info(f"\nEpoch {epoch + 1}/{self.config.num_epochs}")
 
@@ -265,18 +288,25 @@ class TransformerTrainer:
                 # Save best model
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
-                    self.save_checkpoint(BEST_MODELS / "best_model.pth")
+                    self.save_checkpoint(
+                        self.checkpoint_dir / "best_model.pth",
+                        epoch
+                    )
                     self.logger.info("New best model saved!")
 
-    def save_checkpoint(self, filename):
-        """Save model checkpoint."""
+
+    def save_checkpoint(self, filename, epoch):
+        filename.parent.mkdir(parents=True, exist_ok=True)
+
         checkpoint = {
+            "epoch": epoch,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
             "scheduler_state_dict": self.scheduler.state_dict(),
             "model_config": self.model_config,
         }
         torch.save(checkpoint, filename)
+
 
 
 def parse_args(): 
@@ -299,6 +329,7 @@ def main():
 
     print("Hyperparameters:")
     print(hparams)
+
 
     # Create trainer config
     trainer_config = TrainerConfig(**hparams)
@@ -349,6 +380,18 @@ def main():
     transformer_config = TransformerConfig(**model_config)
     model = TransformerModel(config=transformer_config)
 
+
+    if args.fetch_data_online:
+        # Colab execution
+        from google.colab import drive
+        drive.mount("/content/drive")
+        CHECKPOINT_DIR = Path("/content/drive/MyDrive/transformer_checkpoints")
+    else:
+        # Local execution
+        CHECKPOINT_DIR = BEST_MODELS
+
+    CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+
     # Create trainer and start training
     trainer = TransformerTrainer(
         model=model,
@@ -357,9 +400,17 @@ def main():
         val_dataset=val_dataset,
         config=trainer_config,
         model_config=model_config,
+        checkpoint_dir=CHECKPOINT_DIR
     )
 
-    trainer.train()
+
+    resume_path = CHECKPOINT_DIR / "latest.pth"
+
+    start_epoch = 0
+    if resume_path.exists():
+        start_epoch = trainer.load_checkpoint(resume_path)
+
+    trainer.train(start_epoch)
 
 
 if __name__ == "__main__":
