@@ -21,6 +21,9 @@ from pathlib import Path
 
 from src.utils.lr_scheduler import TransformerLRScheduler
 
+project_root = Path(__file__).parent.parent.absolute()
+DATASET_PATH = os.path.join(project_root, "hf_cache", "root", ".cache", "huggingface", "datasets", "wmt17", "de-en", "0.0.0", "54d3aacfb5429020b9b85b170a677e4bc92f2449")
+
 
 class TrainerConfig:
     def __init__(self, **kwargs):
@@ -30,6 +33,8 @@ class TrainerConfig:
         self.bleu_start_epoch = kwargs.get("bleu_start_epoch", 5)
         self.train_subset = kwargs.get("train_subset", 100000)
         self.val_subset = kwargs.get("val_subset", 10000)
+
+        self.fetch_data_online = kwargs.get("fetch_data_online", False)
 
         self.val_interval = kwargs.get("val_interval", 1)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "mps:0")
@@ -276,16 +281,23 @@ def main():
     with open(HYPERPARAMETERS, "r") as f:
         hparams = yaml.safe_load(f)
 
+    print("Model Config:")
+    print(model_config)
+
+    print("Hyperparameters:")
+    print(hparams)
+
     # Create trainer config
     trainer_config = TrainerConfig(**hparams)
 
-
-    project_root = Path(__file__).parent.parent.absolute()
-    DATASET_PATH = os.path.join(project_root, "hf_cache", "root", ".cache", "huggingface", "datasets", "wmt17", "de-en", "0.0.0", "54d3aacfb5429020b9b85b170a677e4bc92f2449",)
-
-    # Load and prepare datasets
-    train_ds = load_dataset(str(DATASET_PATH), split=f"train[:{model_config.get("train_subset", "1000000")}]")
-    val_ds   = load_dataset(str(DATASET_PATH), split=f"validation[:{model_config.get("val_subset", "200")}]")
+    if model_config.get("fetch_data_online"):
+        train_ds = load_dataset("wmt17", "de-en", split=f"train[{hparams['train_subset']}]")
+        val_ds = load_dataset("wmt17", "de-en", split=f"validation[{hparams["val_subset"]}]")
+ 
+    else:
+        # Load and prepare datasets
+        train_ds = load_dataset(str(DATASET_PATH), split=f"train[:{model_config.get("train_subset", "1000000")}]")
+        val_ds   = load_dataset(str(DATASET_PATH), split=f"validation[:{model_config.get("val_subset", "2000")}]")
 
     max_length = model_config.get("max_len", 64)
     train_cleaned = clean_dataset(

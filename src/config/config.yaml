@@ -6,3 +6,5 @@ num_encoder_layers: 6
 num_decoder_layers: 6
 dim_feedforward: 1024 # typically 4x d_model
 dropout: 0.1
+
+fetch_data_online: True
