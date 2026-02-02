@@ -27,6 +27,21 @@ from src.utils.lr_scheduler import TransformerLRScheduler
 project_root = Path(__file__).parent.parent.absolute()
 DATASET_PATH = os.path.join(project_root, "hf_cache", "root", ".cache", "huggingface", "datasets", "wmt17", "de-en", "0.0.0", "54d3aacfb5429020b9b85b170a677e4bc92f2449")
 
+def maybe_mount_drive(fetch_data_online: bool):
+    if not fetch_data_online:
+        return
+
+    try:
+        from google.colab import drive
+        from IPython import get_ipython
+
+        ip = get_ipython()
+        if ip is not None:
+            drive.mount("/content/drive")
+        else:
+            print("Colab detected, but no IPython kernel — skipping drive.mount()")
+    except Exception as e:
+        print(f"Skipping drive.mount(): {e}")
 
 class TrainerConfig:
     def __init__(self, **kwargs):
@@ -36,8 +51,6 @@ class TrainerConfig:
         self.bleu_start_epoch = kwargs.get("bleu_start_epoch", 5)
         self.train_subset = kwargs.get("train_subset", 100000)
         self.val_subset = kwargs.get("val_subset", 10000)
-
-        self.fetch_data_online = kwargs.get("fetch_data_online", False)
 
         self.val_interval = kwargs.get("val_interval", 1)
         if torch.cuda.is_available():
@@ -309,14 +322,6 @@ class TransformerTrainer:
 
 
 
-def parse_args(): 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--fetch_data_online", type=str, required=False)
-    args = parser.parse_args()
-
-    return args.fetch_data_online
-
-
 def main():
     # Load configurations
     with open(MODEL_CONFIG, "r") as f:
@@ -381,10 +386,10 @@ def main():
     model = TransformerModel(config=transformer_config)
 
 
+    maybe_mount_drive(args.fetch_data_online)
+
     if args.fetch_data_online:
         # Colab execution
-        from google.colab import drive
-        drive.mount("/content/drive")
         CHECKPOINT_DIR = Path("/content/drive/MyDrive/transformer_checkpoints")
     else:
         # Local execution
