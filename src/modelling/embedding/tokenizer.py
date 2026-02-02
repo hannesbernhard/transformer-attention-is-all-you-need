@@ -3,7 +3,7 @@ from transformers import GPT2Tokenizer
 import os
 import json
 
-from config.paths import GPT2_TOKENIZER
+from config.paths import GPT2_FROM_BPE
 
 
 class ByteLevelBPETokenizer:
@@ -77,11 +77,11 @@ class ByteLevelBPETokenizer:
         vocab = model.get_vocab()
         merges = model.get_merges()
 
-        vocab_path = os.path.join(GPT2_TOKENIZER, "vocab.json")
+        vocab_path = os.path.join(GPT2_FROM_BPE, "vocab.json")
         with open(vocab_path, "w", encoding="utf-8") as vocab_file:
             json.dump(vocab, vocab_file, ensure_ascii=False) # Do not escape non-ASCII characters
 
-        merges_path = os.path.join(GPT2_TOKENIZER, "merges.txt")
+        merges_path = os.path.join(GPT2_FROM_BPE, "merges.txt")
         with open(merges_path, "w", encoding="utf-8") as merges_file:
             merges_file.write("#version: 0.2\n") # expected by GPT2Tokenizer
             merges_file.write(
@@ -89,7 +89,7 @@ class ByteLevelBPETokenizer:
             )
 
         gpt2_tokenizer = GPT2Tokenizer.from_pretrained(
-            str(GPT2_TOKENIZER),
+            str(GPT2_FROM_BPE),
             pad_token = "[PAD]",
             bos_token = "[BOS]",
             eos_token = "[EOS]",

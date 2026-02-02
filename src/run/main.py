@@ -18,6 +18,7 @@ import wandb
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 import os
 from pathlib import Path
+import argparse
 
 from src.utils.lr_scheduler import TransformerLRScheduler
 
@@ -274,6 +275,14 @@ class TransformerTrainer:
         torch.save(checkpoint, filename)
 
 
+def parse_args(): 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fetch_data_online", type=str, required=False)
+    args = parser.parse_args()
+
+    return args.fetch_data_online
+
+
 def main():
     # Load configurations
     with open(MODEL_CONFIG, "r") as f:
@@ -290,14 +299,23 @@ def main():
     # Create trainer config
     trainer_config = TrainerConfig(**hparams)
 
-    if model_config.get("fetch_data_online"):
+    # Argparser
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--fetch_data_online",
+        action="store_true",
+        help="Fetch dataset from HuggingFace instead of local files"
+    )
+    args = parser.parse_args()
+
+    if args.fetch_data_online:
         train_ds = load_dataset("wmt17", "de-en", split=f"train[{hparams['train_subset']}]")
         val_ds = load_dataset("wmt17", "de-en", split=f"validation[{hparams["val_subset"]}]")
  
     else:
         # Load and prepare datasets
-        train_ds = load_dataset(str(DATASET_PATH), split=f"train[:{model_config.get("train_subset", "1000000")}]")
-        val_ds   = load_dataset(str(DATASET_PATH), split=f"validation[:{model_config.get("val_subset", "2000")}]")
+        train_ds = load_dataset(str(DATASET_PATH), split=f"train[{hparams['train_subset']}]")
+        val_ds   = load_dataset(str(DATASET_PATH), split=f"validation[{hparams["val_subset"]}]")
 
     max_length = model_config.get("max_len", 64)
     train_cleaned = clean_dataset(

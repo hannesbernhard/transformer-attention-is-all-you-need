@@ -1,6 +1,10 @@
 from pathlib import Path
+from datasets import load_dataset
 from transformers import GPT2Tokenizer
-from config.paths import GPT2_FROM_BPE
+from config.paths import GPT2_FROM_BPE, MODEL_CONFIG
+import yaml
+from src.utils.data_cleaning import clean_dataset
+from src.modelling.embedding.tokenizer import ByteLevelBPETokenizer
 
 
 def get_or_create_tokenizer() -> GPT2Tokenizer:
@@ -27,4 +31,20 @@ def get_or_create_tokenizer() -> GPT2Tokenizer:
         add_prefix_space=True,
     )
     return tokenizer
+
+
+
+# Load the dataset
+def init_tokenizer(percentage=1):
+    with open(MODEL_CONFIG, "r") as f:
+        model_config = yaml.safe_load(f)
+    dataset = load_dataset("wmt17", "de-en", split=f"train[:{percentage}%]")
+    cleaned_data = clean_dataset(dataset, max_length=model_config["max_len"])
+    ByteLevelBPETokenizer(
+        cleaned_data,
+        vocab_size=model_config["vocab_size"],
+        max_length=model_config["max_len"],
+    )
+
+
 
