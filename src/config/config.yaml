@@ -1,0 +1,8 @@
+vocab_size: 50048 # multiple of 64
+d_model: 256 # hidden units
+max_len: 128 
+n_heads: 8
+num_encoder_layers: 6
+num_decoder_layers: 6
+dim_feedforward: 1024 # typically 4x d_model
+dropout: 0.1

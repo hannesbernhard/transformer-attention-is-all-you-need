@@ -1,0 +1,7 @@
+batch_size: 64
+num_epochs: 25
+learning_rate: 0.0003
+train_subset: ":1000000"
+val_subset: ":2000"
+bleu_start_epoch: 8
+val_interval: 1

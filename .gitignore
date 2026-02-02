@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+*.csv
+*.parquet
+
+# Models
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
+
+# HuggingFace cache
+.cache/
+
+wandb/
+hf_cache/
