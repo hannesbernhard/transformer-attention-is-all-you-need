@@ -54,7 +54,7 @@ def maybe_mount_drive(fetch_data_online: bool):
 class TrainerConfig:
     def __init__(self, **kwargs):
         self.num_epochs = kwargs.get("num_epochs", 10)
-        self.batch_size = kwargs.get("batch_size", 32)
+        self.batch_size = kwargs.get("batch_size", 30)
         self.learning_rate = kwargs.get("learning_rate", 3e-4)
         self.weight_decay = kwargs.get("weight_decay", 0.01)
         self.bleu_start_epoch = kwargs.get("bleu_start_epoch", 5)
