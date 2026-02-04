@@ -16,6 +16,7 @@ from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 import os
 from pathlib import Path
 import argparse
+from torch.amp import autocast, GradScaler
 
 from src.utils.lr_scheduler import TransformerLRScheduler
 
@@ -87,6 +88,11 @@ class TransformerTrainer:
         self.config = config
         self.model_config = model_config
         self.checkpoint_dir = checkpoint_dir
+        
+        self.use_cuda_amp = self.config.device.type == "cuda"
+        self.scaler = (
+            GradScaler("cuda") if self.use_cuda_amp else None
+        )
 
         pin = self.config.device.type == "cuda"
 
@@ -103,8 +109,7 @@ class TransformerTrainer:
             pin_memory=pin,
         )
 
-        train_subset = len(train_dataset)
-        total_steps = (train_subset // config.batch_size) * config.num_epochs
+        total_steps = len(self.train_loader) * config.num_epochs
         self.warmup_steps = min(int(total_steps * 0.1), 35000)
         print(f"Total steps: {total_steps}, Warmup steps: {self.warmup_steps}")
 
@@ -178,26 +183,48 @@ class TransformerTrainer:
             target_mask = batch["target_mask"].to(self.config.device)
             labels = batch["labels"].to(self.config.device)
 
-            self.optimizer.zero_grad()
-            output = self.model(
-                source_ids, target_ids, source_mask, target_mask
-            )
-            logits = output.view(-1, output.size(-1))
-            labels = labels.view(-1)
+            self.optimizer.zero_grad(set_to_none=True)
 
-            non_pad = labels != self.tokenizer.pad_token_id
-            loss = F.cross_entropy(
-                logits[non_pad],
-                labels[non_pad],
-                label_smoothing=0.1,
-            )
+            if self.use_cuda_amp:
+                with autocast("cuda", dtype=torch.float16):
+                    output = self.model(
+                        source_ids, target_ids, source_mask, target_mask
+                    )
+                    logits = output.view(-1, output.size(-1))
+                    labels_flat = labels.view(-1)
 
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                    non_pad = labels_flat != self.tokenizer.pad_token_id
+                    loss = F.cross_entropy(
+                        logits[non_pad],
+                        labels_flat[non_pad],
+                        label_smoothing=0.1,
+                    )
 
-            self.optimizer.step()
+                self.scaler.scale(loss).backward()
+                self.scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+
+            else:
+                output = self.model(
+                    source_ids, target_ids, source_mask, target_mask
+                )
+                logits = output.view(-1, output.size(-1))
+                labels_flat = labels.view(-1)
+
+                non_pad = labels_flat != self.tokenizer.pad_token_id
+                loss = F.cross_entropy(
+                    logits[non_pad],
+                    labels_flat[non_pad],
+                    label_smoothing=0.1,
+                )
+
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                self.optimizer.step()
+
             self.scheduler.step()
-
             total_loss += loss.item()
 
         self.save_checkpoint(
