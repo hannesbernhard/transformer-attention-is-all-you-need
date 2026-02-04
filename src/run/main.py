@@ -195,8 +195,8 @@ class TransformerTrainer:
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
 
-            self.scheduler.step()
             self.optimizer.step()
+            self.scheduler.step()
 
             total_loss += loss.item()
 
