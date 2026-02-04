@@ -175,10 +175,10 @@ class TransformerModel(nn.Module):
             if tgt.size(1) > 8:
                 logits[:, -1, eos_token_id] += 2.0
 
-            #next_token = logits[:, -1].argmax(dim=-1)
+            next_token = logits[:, -1].argmax(dim=-1)
 
-            probs = F.softmax(logits[:, -1] / 0.8, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
+            # probs = F.softmax(logits[:, -1] / 0.8, dim=-1)
+            # next_token = torch.multinomial(probs, num_samples=1).squeeze(1)
 
             tgt = torch.cat([tgt, next_token.unsqueeze(1)], dim=1)
 
