@@ -1,8 +1,8 @@
-batch_size: 128
-num_epochs: 20
-learning_rate: 0.0003
+batch_size: 256
+num_epochs: 30
+learning_rate: 0.5
 train_subset: ":1000000"
-val_subset: ":5000"
+val_subset: ":10000"
 bleu_start_epoch: 5
 val_interval: 1
 weight_decay: 0.01

@@ -164,16 +164,16 @@ class TransformerModel(nn.Module):
 
             logits = self.output_layer(decoder_out)
 
-            # Encourage EOS (decoding-only bias)
-            logits[:, -1, eos_token_id] += 1.5
+            # # Encourage EOS (decoding-only bias)
+            # logits[:, -1, eos_token_id] += 1.5
 
-            # repetition penalty
-            for t in set(tgt[0].tolist()):
-                logits[:, -1, t] /= 1.2
+            # # repetition penalty
+            # for t in set(tgt[0].tolist()):
+            #     logits[:, -1, t] /= 1.2
 
-            # encourage EOS after minimum length
-            if tgt.size(1) > 8:
-                logits[:, -1, eos_token_id] += 2.0
+            # # encourage EOS after minimum length
+            # if tgt.size(1) > 8:
+            #     logits[:, -1, eos_token_id] += 2.0
 
             next_token = logits[:, -1].argmax(dim=-1)
 
