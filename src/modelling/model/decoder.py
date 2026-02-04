@@ -18,9 +18,9 @@ class Decoder(nn.Module):
             ]
         )
 
-    def forward(self, src_emb, tgt_emb, src_mask, tgt_mask):
+    def forward(self, tgt_emb, memory, memory_mask, tgt_mask):
         # tgt_emb = self.transformer_emb(tgt)
 
         for layer in self.decoder_layers:
-            tgt_emb = layer(src_emb, tgt_emb, src_mask, tgt_mask)
+            tgt_emb = layer(tgt_emb, memory, memory_mask, tgt_mask)
         return tgt_emb
