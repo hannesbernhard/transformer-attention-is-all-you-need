@@ -32,7 +32,7 @@ class TransformerEncoderLayer(nn.Module):
         """
         super().__init__()
 
-        self.self_attention = MultiHeadAttention(input_dim, num_heads)
+        self.self_attention = MultiHeadAttention(input_dim, num_heads, kwargs.get("use_rope", False))
         self.feature_transformation = PositionwiseFeedForward(
             input_dim, feature_dim, dropout
         )

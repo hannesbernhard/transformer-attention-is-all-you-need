@@ -43,10 +43,10 @@ class TransformerDecoderLayer(nn.Module):
         super().__init__()
 
         # Self-attention (masked)
-        self.self_attention = MultiHeadAttention(input_dim, num_heads, mask_future=True)
+        self.self_attention = MultiHeadAttention(input_dim, num_heads, mask_future=True, use_rope=kwargs.get("use_rope", False))
 
         # Encoder-decoder (cross) attention
-        self.encoder_attention = MultiHeadAttention(input_dim, num_heads)
+        self.encoder_attention = MultiHeadAttention(input_dim, num_heads, use_rope=kwargs.get("use_rope", False))
 
         # Feed-forward network
         self.feature_transformation = PositionwiseFeedForward(
