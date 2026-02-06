@@ -28,80 +28,6 @@ DATASET_PATH = os.path.join(
     "54d3aacfb5429020b9b85b170a677e4bc92f2449",
 )
 
-@torch.no_grad()
-def beam_search_decode(
-    model,
-    source_ids,
-    tokenizer,
-    max_len=64,
-    beam_width=4,
-    alpha=0.6,
-):
-    device = source_ids.device
-    bos = tokenizer.bos_token_id
-    eos = tokenizer.eos_token_id
-    pad = tokenizer.pad_token_id
-
-    beams = [(
-        torch.tensor([[bos]], device=device),
-        0.0,
-        False,
-    )]
-
-    def length_penalty(length):
-        return ((5 + length) / 6) ** alpha
-
-    for _ in range(max_len - 1):
-        candidates = []
-
-        for tokens, log_prob, finished in beams:
-            if finished:
-                candidates.append((tokens, log_prob, True))
-                continue
-
-            # ✅ USE FULL MODEL (embeddings + masks included)
-            logits = model(
-                source_ids,
-                tokens,
-                None,
-                None,
-            )
-
-            logits = logits[:, -1, :]
-            logits[:, pad] = -1e9
-
-            log_probs = torch.log_softmax(logits, dim=-1)
-            topk_log_probs, topk_ids = torch.topk(log_probs, beam_width)
-
-            for k in range(beam_width):
-                next_id = topk_ids[0, k].item()
-                new_tokens = torch.cat(
-                    [tokens, torch.tensor([[next_id]], device=device)],
-                    dim=1,
-                )
-
-                new_score = log_prob + topk_log_probs[0, k].item()
-                finished = (next_id == eos)
-
-                candidates.append((new_tokens, new_score, finished))
-
-        beams = sorted(
-            candidates,
-            key=lambda x: x[1] / length_penalty(x[0].size(1)),
-            reverse=True,
-        )[:beam_width]
-
-        if all(f for _, _, f in beams):
-            break
-
-    best = max(
-        beams,
-        key=lambda x: x[1] / length_penalty(x[0].size(1)),
-    )
-
-    return best[0]
-
-
 
 @torch.no_grad()
 def evaluate(model, tokenizer, dataloader, device, max_len):
@@ -117,12 +43,11 @@ def evaluate(model, tokenizer, dataloader, device, max_len):
 
         # batch_size = 1 is safest for generate()
         for i in range(source_ids.size(0)):
-            generated = beam_search_decode(
-                model,
+            generated = model.generate(
                 source_ids[i : i + 1],
-                tokenizer,
-                max_len=max_len,
-                beam_width=3,
+                bos_token_id=tokenizer.bos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                max_length=max_len,
             )
 
             pred = tokenizer.decode(
@@ -187,12 +112,12 @@ def main():
         test_ds = load_dataset(
             "wmt17",
             "de-en",
-            split="test[:500]" 
+            split="test[:200]" 
         )
     else:
         test_ds = load_dataset(
             str(DATASET_PATH),
-            split=f"train[:500]",
+            split=f"train[:200]",
         )
     test_cleaned = clean_dataset(
         test_ds,

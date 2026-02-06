@@ -56,7 +56,7 @@ class TrainerConfig:
     def __init__(self, **kwargs):
         self.num_epochs = kwargs.get("num_epochs", 10)
         self.batch_size = kwargs.get("batch_size", 30)
-        #self.learning_rate = kwargs.get("learning_rate", 0.5)
+        self.learning_rate = kwargs.get("learning_rate", 0.5)
         self.weight_decay = kwargs.get("weight_decay", 0.01)
         self.bleu_start_epoch = kwargs.get("bleu_start_epoch", 5)
         self.train_subset = kwargs.get("train_subset", 100000)
@@ -110,8 +110,8 @@ class TransformerTrainer:
         )
 
         total_steps = len(self.train_loader) * config.num_epochs
-        # self.warmup_steps = 4000
-        self.warmup_steps = min(int(total_steps * 0.1), 8000)
+        self.warmup_steps = 4000
+        #self.warmup_steps = min(int(total_steps * 0.1), 35000)
         print(f"Total steps: {total_steps}, Warmup steps: {self.warmup_steps}")
 
         # ===== Correct AdamW initialization (no weight decay on bias & LayerNorm) =====
@@ -131,7 +131,7 @@ class TransformerTrainer:
                 {"params": decay_params, "weight_decay": config.weight_decay},
                 {"params": no_decay_params, "weight_decay": 0.0},
             ],
-            lr=1.0,
+            lr=config.learning_rate,
             betas=(0.9, 0.98),
             eps=1e-9,
         )
@@ -226,8 +226,6 @@ class TransformerTrainer:
                 self.optimizer.step()
 
             self.scheduler.step()
-            current_lr = self.scheduler.get_last_lr()[0]
-            wandb.log({"Learning Rate": current_lr})
             total_loss += loss.item()
 
         self.save_checkpoint(
