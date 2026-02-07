@@ -12,8 +12,13 @@ class TransformerEmbedding(nn.Module):
     def __init__(self, vocab_size, d_model, max_len, use_rope = False):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model)
-        self.pos_emb = PositionalEncoding(d_model, max_len)
         self.use_rope = use_rope
+
+        if not use_rope:
+            self.pos_emb = PositionalEncoding(d_model, max_len)
+        else: 
+            self.pos_emb = None
+
 
     def forward(self, token):
         """
@@ -24,12 +29,9 @@ class TransformerEmbedding(nn.Module):
         token_emb = self.token_emb(token)        # (B, T, d_model)
         token_emb = self.token_emb(token) * math.sqrt(self.token_emb.embedding_dim)
 
-        pos_emb = self.pos_emb(token)             # (B, max_len, d_model) OR similar
-        pos_emb = pos_emb[:, :T, :]               # slice to t
+        if self.pos_emb is not None: 
+            pos_emb = self.pos_emb(token)             # (B, max_len, d_model) OR similar
+            pos_emb = pos_emb[:, :T, :]      # slice to t
+            return token_emb + pos_emb     
 
-        # RoPE
-        if not self.use_rope:
-            pos_emb = self.pos_emb(token)[:, :T, :]
-            return token_emb + pos_emb
-
-        return token_emb + pos_emb
+        return token_emb 
