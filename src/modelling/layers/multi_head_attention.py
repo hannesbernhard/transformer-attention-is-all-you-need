@@ -82,8 +82,9 @@ class MultiHeadAttention(nn.Module):
                 device=q.device,
             )
 
-            q = apply_rope(q, sin, cos)
             k = apply_rope(k, sin, cos)
+            if query_len == key_len:
+                q = apply_rope(q, sin, cos)
 
 
         # Apply attention on all the projected vectors in batch
