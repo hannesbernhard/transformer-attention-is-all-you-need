@@ -79,7 +79,7 @@ def extend_sinusoidal_pe(model, d_model, test_max_len, device):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--test_max_len", type=int, required=True)
-    parser.add_argument("--split", type=str, default="test[:200]")
+    parser.add_argument("--split", type=str, default="test[:300]")
     parser.add_argument("--fetch_data_online", action="store_true")
     args = parser.parse_args()
 
@@ -99,7 +99,7 @@ def main():
     ).to(device)
 
     checkpoint = torch.load(
-        BEST_MODELS / "best_model_without_rope.pth",
+        BEST_MODELS / "best_model_with_rope.pth",
         map_location=device,
     )
     model.load_state_dict(checkpoint["model_state_dict"], strict = False)

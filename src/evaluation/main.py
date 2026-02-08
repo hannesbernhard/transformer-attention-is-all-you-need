@@ -97,10 +97,10 @@ def main():
     ).to(device)
 
     checkpoint = torch.load(
-        BEST_MODELS / "best_model.pth",
+        BEST_MODELS / "best_model_overall.pth",
         map_location=device,
     )
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(checkpoint["model_state_dict"], strict = False)
 
     # ===== Load SMALL test subset (KEY PART) =====
 
@@ -112,12 +112,12 @@ def main():
         test_ds = load_dataset(
             "wmt17",
             "de-en",
-            split="test[:200]" 
+            split="test[:1000]" 
         )
     else:
         test_ds = load_dataset(
             str(DATASET_PATH),
-            split=f"train[:200]",
+            split=f"test[:1000]",
         )
     test_cleaned = clean_dataset(
         test_ds,
