@@ -10,6 +10,7 @@ from src.modelling.blocks.decoder_layer import (
 from src.modelling.blocks.encoder_layer  import (
     TransformerEncoderLayer as Encoder,
 )
+from config.paths import MODEL_CONFIG
 
 
 # =========================
@@ -26,6 +27,7 @@ class TransformerConfig:
     dim_feedforward: int
     dropout: float
     max_len: int
+    use_rope: bool
 
     def validate(self):
         if self.vocab_size <= 0:
@@ -58,10 +60,10 @@ class TransformerModel(nn.Module):
 
         # Embeddings
         self.src_embed = TransformerEmbedding(
-            config.vocab_size, config.d_model, config.max_len
+            config.vocab_size, config.d_model, config.max_len, use_rope=config.use_rope
         )
         self.tgt_embed = TransformerEmbedding(
-            config.vocab_size, config.d_model, config.max_len
+            config.vocab_size, config.d_model, config.max_len, use_rope=config.use_rope
         )
 
         # Encoder and Decoder
@@ -73,6 +75,7 @@ class TransformerModel(nn.Module):
             feature_dim=config.dim_feedforward,
             dropout=config.dropout,
             n_layers=config.num_encoder_layers,
+            use_rope = config.use_rope
         )
 
         self.decoder = Decoder(
@@ -83,6 +86,7 @@ class TransformerModel(nn.Module):
             feature_dim=config.dim_feedforward,
             dropout=config.dropout,
             n_layers=config.num_decoder_layers,
+            use_rope = config.use_rope
         )
 
         # Output projection

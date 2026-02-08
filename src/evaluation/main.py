@@ -97,39 +97,40 @@ def main():
     ).to(device)
 
     checkpoint = torch.load(
-        BEST_MODELS / "best_model.pth",
+        BEST_MODELS / "best_model_without_rope.pth",
         map_location=device,
     )
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(checkpoint["model_state_dict"],strict=False)
 
     # ===== Load SMALL test subset (KEY PART) =====
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--fetch_data_online", action="store_true")
+    parser.add_argument("--max_len", type=int, default = 64)
     args = parser.parse_args()
 
     if args.fetch_data_online:
         test_ds = load_dataset(
             "wmt17",
             "de-en",
-            split="test[:200]" 
+            split="test[:1000]" 
         )
     else:
         test_ds = load_dataset(
             str(DATASET_PATH),
-            split=f"train[:200]",
+            split=f"train[:1000]",
         )
     test_cleaned = clean_dataset(
         test_ds,
         min_len=5,
-        max_len=max_len,
+        max_len=args.max_len,
         max_ratio=2.5,
     )
 
     test_dataset = TranslationDataset(
         test_cleaned,
         tokenizer,
-        max_len,
+        args.max_len,
     )
 
     test_loader = DataLoader(
@@ -145,7 +146,7 @@ def main():
         tokenizer,
         test_loader,
         device,
-        max_len,
+        args.max_len,
     )
 
     print("\n==============================")

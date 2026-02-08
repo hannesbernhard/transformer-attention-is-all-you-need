@@ -5,13 +5,13 @@ from src.modelling.embedding.transformer_embedding import TransformerEmbedding
 
 class Encoder(nn.Module):
     def __init__(
-        self, vocab_size, d_model, max_len, n_heads, dim_feedforward, dropout, n_layers
+        self, vocab_size, d_model, max_len, n_heads, dim_feedforward, dropout, n_layers, use_rope = False
     ):
         super().__init__()
         # self.transformer_emb = TransformerEmbedding(vocab_size, d_model, max_len)
         self.encoder_layers = nn.ModuleList(
             [
-                TransformerEncoderLayer(d_model, n_heads, dim_feedforward, dropout)
+                TransformerEncoderLayer(d_model, n_heads, dim_feedforward, dropout, use_rope=use_rope)
                 for _ in range(n_layers)
             ]
         )

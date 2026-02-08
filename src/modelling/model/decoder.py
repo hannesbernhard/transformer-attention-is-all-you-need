@@ -6,14 +6,14 @@ from src.modelling.blocks.decoder_layer import TransformerDecoderLayer
 
 class Decoder(nn.Module):
     def __init__(
-        self, vocab_size, d_model, max_len, n_heads, dim_feedforward, dropout, n_layers
+        self, vocab_size, d_model, max_len, n_heads, dim_feedforward, dropout, n_layers, use_rope =False
     ):
         super().__init__()
         # self.transformer_emb = TransformerEmbedding(vocab_size, d_model, max_len)
         # embedded in Transformer module for consitency in weight sharing
         self.decoder_layers = nn.ModuleList(
             [
-                TransformerDecoderLayer(d_model, n_heads, dim_feedforward, dropout)
+                TransformerDecoderLayer(d_model, n_heads, dim_feedforward, dropout, use_rope = use_rope)
                 for _ in range(n_layers)
             ]
         )
