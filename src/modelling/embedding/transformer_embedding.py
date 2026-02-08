@@ -26,7 +26,6 @@ class TransformerEmbedding(nn.Module):
         """
         B, T = token.size()
 
-        token_emb = self.token_emb(token)        # (B, T, d_model)
         token_emb = self.token_emb(token) * math.sqrt(self.token_emb.embedding_dim)
 
         if self.pos_emb is not None: 
