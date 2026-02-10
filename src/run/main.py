@@ -110,8 +110,8 @@ class TransformerTrainer:
         )
 
         total_steps = len(self.train_loader) * config.num_epochs
-        self.warmup_steps = 4000
-        #self.warmup_steps = min(int(total_steps * 0.1), 35000)
+        # self.warmup_steps = 4000
+        self.warmup_steps = min(int(total_steps * 0.1), 35000)
         print(f"Total steps: {total_steps}, Warmup steps: {self.warmup_steps}")
 
         # ===== Correct AdamW initialization (no weight decay on bias & LayerNorm) =====
@@ -399,7 +399,7 @@ def main():
     maybe_mount_drive(args.fetch_data_online)
 
     checkpoint_dir = (
-        Path("/content/drive/MyDrive/transformer_checkpoints")
+        BEST_MODELS
         if args.fetch_data_online
         else BEST_MODELS
     )
