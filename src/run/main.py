@@ -89,10 +89,10 @@ class TransformerTrainer:
         self.model_config = model_config
         self.checkpoint_dir = checkpoint_dir
         
-        self.use_cuda_amp = self.config.device.type == "cuda"
-        self.scaler = (
-            GradScaler("cuda") if self.use_cuda_amp else None
-        )
+        # self.use_cuda_amp = self.config.device.type == "cuda"
+        # self.scaler = (
+        #     GradScaler("cuda") if self.use_cuda_amp else None
+        # )
 
         pin = self.config.device.type == "cuda"
 
@@ -186,46 +186,29 @@ class TransformerTrainer:
 
             self.optimizer.zero_grad(set_to_none=True)
 
-            if self.use_cuda_amp:
-                with autocast("cuda", dtype=torch.float16):
-                    output = self.model(
-                        source_ids, target_ids, source_mask, target_mask
-                    )
-                    logits = output.view(-1, output.size(-1))
-                    labels_flat = labels.view(-1)
+            # ===== FP32 forward =====
+            output = self.model(
+                source_ids, target_ids, source_mask, target_mask
+            )
 
-                    non_pad = labels_flat != self.tokenizer.pad_token_id
-                    loss = F.cross_entropy(
-                        logits[non_pad],
-                        labels_flat[non_pad],
-                        label_smoothing=0.1,
-                    )
+            logits = output.view(-1, output.size(-1))
+            labels_flat = labels.view(-1)
 
-                self.scaler.scale(loss).backward()
-                self.scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+            non_pad = labels_flat != self.tokenizer.pad_token_id
 
-            else:
-                output = self.model(
-                    source_ids, target_ids, source_mask, target_mask
-                )
-                logits = output.view(-1, output.size(-1))
-                labels_flat = labels.view(-1)
+            loss = F.cross_entropy(
+                logits[non_pad],
+                labels_flat[non_pad],
+                label_smoothing=0.1,
+            )
 
-                non_pad = labels_flat != self.tokenizer.pad_token_id
-                loss = F.cross_entropy(
-                    logits[non_pad],
-                    labels_flat[non_pad],
-                    label_smoothing=0.1,
-                )
+            # ===== FP32 backward =====
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
 
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-                self.optimizer.step()
-
+            self.optimizer.step()
             self.scheduler.step()
+
             total_loss += loss.item()
 
         self.save_checkpoint(
@@ -234,6 +217,7 @@ class TransformerTrainer:
         )
 
         return total_loss / len(self.train_loader)
+
 
     @torch.no_grad()
     def calculate_bleu_generate(self, batch):
